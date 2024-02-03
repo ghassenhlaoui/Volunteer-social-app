@@ -2,6 +2,18 @@ const User = require("../models/User");
 const router = require("express").Router();
 const bcrypt = require("bcrypt");
 
+
+
+router.get("/", async (req, res) => {
+  try {
+    const user = await User.findOne({username:req.query.username});
+    if (!user)  return res.status(404).json({status : 'fail',message:'user not found'});
+    const { password, updatedAt, ...other } = user._doc;
+    return res.status(200).json({status:'success',data:other});
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
 //update user
 router.put("/:id", async (req, res) => {
   if (req.body.userId === req.params.id || req.body.isAdmin) {
@@ -44,8 +56,30 @@ router.delete("/:id", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
+    if (!user)  return res.status(404).json({status : 'fail',message:'user not found'});
     const { password, updatedAt, ...other } = user._doc;
-    res.status(200).json(other);
+    return res.status(200).json({status:'success',data:other});
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
+
+//get friends
+router.get("/friends/:userId", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    const friends = await Promise.all(
+      user.followings.map((friendId) => {
+        return User.findById(friendId);
+      })
+    );
+    let friendList = [];
+    friends.map((friend) => {
+      const { _id, username, profilePicture } = friend;
+      friendList.push({ _id, username, profilePicture });
+    });
+    res.status(200).json(friendList)
   } catch (err) {
     res.status(500).json(err);
   }
